@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClinicOS | AI‑Powered Dispatch</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    
+    <style>
+        :root { --primary: #6366f1; --bg: #020617; }
+        body { background-color: var(--bg); color: white; font-family: 'Inter', sans-serif; overflow-x: hidden; }
+
+        /* Animated Parallax Background */
+        .parallax-bg {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), rgba(99, 102, 241, 0.2) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 20%, rgba(168, 85, 247, 0.15) 0%, transparent 40%);
+            z-index: -1;
+            transition: background 0.1s ease-out;
+        }
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 2rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        #chat-window {
+            height: 380px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            padding-right: 10px;
+        }
+
+        .message { padding: 1rem 1.25rem; border-radius: 1.25rem; max-width: 80%; line-height: 1.5; }
+        .ai-msg { background: #1e293b; align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid #334155; color: white; }
+        .user-msg { background: var(--primary); align-self: flex-end; border-bottom-right-radius: 4px; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3); color: white; }
+
+        .brief-card { 
+            background: rgba(15, 23, 42, 0.8); 
+            border-left: 4px solid #f59e0b; 
+            padding: 1rem; 
+            margin-top: 0.5rem; 
+            font-size: 0.85rem; 
+            border-radius: 0.75rem;
+            color: #cbd5e1;
+        }
+
+        #user-input {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            font-weight: 500;
+        }
+        #user-input::placeholder { color: #64748b; }
+
+        #map { height: 500px; width: 100%; border-radius: 1.5rem; }
+        .leaflet-routing-container { display: none; }
+
+        #about-page { transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); transform: translateY(100%); }
+        #about-page.active { transform: translateY(0); }
+
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 3000; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
+
+        /* camera preview container */
+        #camera-container { transition: all 0.2s ease; }
+        #shutterBtn {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(4px);
+            border: 2px solid white;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+        }
+        #shutterBtn:hover { background: rgba(255, 255, 255, 0.3); transform: scale(1.05); }
+        #cameraPreview { border: 2px solid rgba(255,255,255,0.2); box-shadow: 0 10px 30px -10px #000; }
+    </style>
+</head>
+<body>
+
+    <div class="parallax-bg" id="bg"></div>
+
+    <nav class="container mx-auto flex justify-between items-center py-8 px-6 relative z-10">
+        <h1 class="text-4xl font-black text-white tracking-tighter cursor-pointer" onclick="location.reload()">
+            Clinic<span class="text-indigo-500">OS</span>
+        </h1>
+        <div class="flex items-center space-x-6">
+            <select id="lang-select" class="bg-slate-800 text-xs font-bold border border-slate-700 rounded-lg p-2 outline-none text-indigo-400">
+                <option value="English">EN</option>
+                <option value="Arabic">AR</option>
+                <option value="Spanish">ES</option>
+                <option value="French">FR</option>
+            </select>
+            <button class="text-slate-400 hover:text-white font-bold transition" onclick="toggleAbout(true)">About Us</button>
+            <div id="auth-zone">
+                <button class="bg-indigo-600 hover:bg-indigo-500 px-8 py-3 rounded-xl font-bold transition transform hover:-translate-y-1 shadow-xl" onclick="toggleModal('auth-modal', true)">Sign In</button>
+            </div>
+            <button id="telegramBtn" class="bg-blue-500 hover:bg-blue-400 px-4 py-2 rounded-xl text-white font-bold">Telegram Booking</button>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-6 grid lg:grid-cols-2 gap-10 pb-20 relative z-10">
+        
+        <!-- LEFT PANEL: CHAT + INPUT + CAMERA -->
+        <div class="glass-card p-8 flex flex-col h-full">
+            <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center space-x-3">
+                    <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                    <h2 class="text-xl font-bold">Multi-Modal AI</h2>
+                </div>
+            </div>
+
+            <div id="chat-window">
+                <div class="message ai-msg">Welcome to ClinicOS!</div>
+            </div>
+
+            <div class="mt-6 flex flex-col space-y-3">
+                <!-- Input row: camera trigger, mic, text, send -->
+                <div class="flex space-x-3">
+                    <!-- Camera icon button (always visible, hidden when preview active) -->
+                    <button id="cameraBtn" class="bg-slate-800 p-4 rounded-xl hover:bg-slate-700 transition border border-slate-700 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-indigo-400" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 5c-3.86 0-7 3.14-7 7s3.14 7 7 7 7-3.14 7-7-3.14-7-7-7zm0 12c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-9a4 4 0 100 8 4 4 0 000-8zm6.5-2a1.5 1.5 0 110 3 1.5 1.5 0 010-3z"/>
+                        </svg>
+                    </button>
+
+                    <button id="micBtn" class="bg-red-500 hover:bg-red-400 px-4 rounded-xl text-white font-bold">🎤</button>
+
+                    <input type="text" id="user-input" class="flex-1 rounded-xl py-4 px-6 focus:outline-none focus:border-indigo-500 transition" placeholder="Describe symptoms..." onkeypress="if(event.key==='Enter') sendMessage()">
+                    
+                    <button onclick="sendMessage()" class="bg-indigo-600 px-6 rounded-xl hover:bg-indigo-500 transition">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                    </button>
+                </div>
+
+                <!-- Camera preview container (hidden by default) -->
+                <div id="camera-container" class="hidden mt-4 flex items-center space-x-4">
+                    <video id="cameraPreview" class="rounded-xl w-48 h-auto" autoplay playsinline></video>
+                    <button id="shutterBtn" class="rounded-full w-14 h-14 flex items-center justify-center transition" title="Take photo">
+                        <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10" stroke="white" stroke-width="2" fill="white" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL: MAP -->
+        <div class="glass-card p-2 overflow-hidden">
+            <div id="map"></div>
+        </div>
+    </main>
+
+    <!-- ABOUT PAGE -->
+    <div id="about-page" class="fixed inset-0 bg-slate-950 z-50 overflow-y-auto">
+        <div class="absolute inset-0 bg-slate-950 opacity-40"></div>
+        <div class="container mx-auto px-6 py-20 max-w-4xl relative z-10">
+            <button class="text-indigo-400 font-bold mb-10 text-xl hover:text-indigo-300 transition" onclick="toggleAbout(false)">← Back to app</button>
+            <div class="glass-card p-10 md:p-16 border border-slate-700/50 shadow-2xl">
+                <h1 class="text-6xl font-black mb-12 tracking-tighter text-white">The <span class="text-indigo-500">Vision.</span></h1>
+                <p class="text-xl text-slate-200 leading-relaxed mb-10">ClinicOS uses real-time AI and GPS data to bridge the gap between injury and treatment.</p>
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="p-6 border-l-4 border-indigo-500 bg-slate-900/50 rounded-r-xl">
+                        <h3 class="text-2xl font-bold text-white">Walid K W</h3>
+                        <p class="text-indigo-400 font-bold text-sm uppercase tracking-widest mt-1">Architecture</p>
+                    </div>
+                    <div class="p-6 border-l-4 border-blue-500 bg-slate-900/50 rounded-r-xl">
+                        <h3 class="text-2xl font-bold text-white">Yousif Sadiq</h3>
+                        <p class="text-blue-400 font-bold text-sm uppercase tracking-widest mt-1">AI Systems</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AUTH MODAL -->
+    <div id="auth-modal" class="modal" onclick="if(event.target==this) toggleModal('auth-modal', false)">
+        <div class="modal-content glass-card p-10 w-full max-w-md">
+            <h2 id="auth-title" class="text-3xl font-bold mb-2 text-white">Sign In</h2>
+            <input type="text" id="username" placeholder="Username" class="w-full bg-white border border-slate-700 rounded-xl p-4 mb-6 outline-none text-black font-bold">
+            <button class="w-full bg-indigo-600 py-4 rounded-xl font-bold text-lg text-white" onclick="handleAuth()">Continue</button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+
+<script>
+// ---------- CONFIG ----------
+const WEBHOOK_URL = 'https://castle-older-ribbon-exhibition.trycloudflare.com/webhook-test/webhookclinic';
+let userPos = null, map, routeControl;
+
+// ---------- TELEGRAM ----------
+document.getElementById("telegramBtn").onclick = function () {
+    window.open("https://t.me/testbot1983bot", "_blank");
+};
+
+// ---------- VOICE RECORDING ----------
+let mediaRecorder;
+let audioChunks = [];
+
+document.getElementById("micBtn").onclick = async function () {
+    if (!mediaRecorder || mediaRecorder.state === "inactive") {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = e => {
+            audioChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = async () => {
+            const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+            sendVoiceToBot(audioBlob);
+        };
+
+        mediaRecorder.start();
+        this.innerText = "⏹️"; // stop icon
+    } else {
+        mediaRecorder.stop();
+        this.innerText = "🎤";
+    }
+};
+
+async function sendVoiceToBot(audioBlob) {
+    const formData = new FormData();
+    formData.append("audio", audioBlob);
+    formData.append("sessionId", SESSION_ID);
+
+    const chat = document.getElementById("chat-window");
+    chat.innerHTML += `<div class="message user-msg italic">🎤 Voice message sent</div>`;
+
+    const res = await fetch(WEBHOOK_URL, {
+        method: "POST",
+        body: formData
+    });
+
+    const data = await res.json();
+    chat.innerHTML += `<div class="message ai-msg">${data.output}</div>`;
+}
+
+// ---------- SESSION ----------
+function getSessionId() {
+    let sessionId = localStorage.getItem('sessionId');
+    if (!sessionId) {
+        sessionId = 'sess-' + Math.random().toString(36).substr(2, 16);
+        localStorage.setItem('sessionId', sessionId);
+    }
+    return sessionId;
+}
+const SESSION_ID = getSessionId();
+
+// ---------- MAP INIT ----------
+map = L.map('map', { zoomControl: false }).setView([25.3463, 55.4209], 14);
+L.tileLayer('http://{s}.google.com/vt/lyrs=m,h&x={x}&y={y}&z={z}', { subdomains: ['mt0','mt1','mt2','mt3'] }).addTo(map);
+
+// ---------- PARALLAX ----------
+window.addEventListener('mousemove', (e) => {
+    const x = (e.clientX / window.innerWidth) * 100;
+    const y = (e.clientY / window.innerHeight) * 100;
+    document.getElementById('bg').style.setProperty('--x', x + '%');
+    document.getElementById('bg').style.setProperty('--y', y + '%');
+});
+
+// ---------- UI HELPERS ----------
+function toggleAbout(show) { document.getElementById('about-page').classList.toggle('active', show); }
+function toggleModal(id, show) { document.getElementById(id).style.display = show ? 'flex' : 'none'; }
+
+function handleAuth() {
+    const user = document.getElementById('username').value;
+    if(!user) return;
+    document.getElementById('auth-zone').innerHTML = `<div class="bg-slate-800 px-5 py-2 rounded-xl border border-slate-700 text-indigo-400 font-bold">@${user}</div>`;
+    toggleModal('auth-modal', false);
+}
+
+// ---------- CAMERA LIVE PREVIEW & SHUTTER ----------
+const cameraBtn = document.getElementById('cameraBtn');
+const cameraContainer = document.getElementById('camera-container');
+const video = document.getElementById('cameraPreview');
+const shutterBtn = document.getElementById('shutterBtn');
+let stream = null;  // will hold MediaStream
+
+// Open camera, show preview and shutter, hide camera button
+cameraBtn.onclick = async () => {
+    if (stream) return; // already open
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+        await video.play();
+        cameraContainer.classList.remove('hidden');
+        cameraBtn.classList.add('hidden');
+    } catch (err) {
+        console.error('Camera error:', err);
+        alert('Could not access camera. Please check permissions.');
+    }
+};
+
+// Shutter button: capture photo, send, then close preview
+shutterBtn.onclick = () => {
+    if (!stream) return;
+
+    // Capture frame from video
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+
+    canvas.toBlob(blob => {
+        sendCameraPhoto(blob);
+    }, 'image/jpeg', 0.8);
+
+    // Stop all tracks and hide preview
+    stream.getTracks().forEach(track => track.stop());
+    stream = null;
+    video.srcObject = null;
+    cameraContainer.classList.add('hidden');
+    cameraBtn.classList.remove('hidden');
+};
+
+// Function to send photo blob to webhook
+async function sendCameraPhoto(blob) {
+    const chat = document.getElementById('chat-window');
+    chat.innerHTML += `<div class="message user-msg italic text-xs">📷 Photo taken from camera</div>`;
+
+    const formData = new FormData();
+    formData.append("image", blob);
+    formData.append("sessionId", SESSION_ID);
+
+    try {
+        const res = await fetch(WEBHOOK_URL, { method: "POST", body: formData });
+        const data = await res.json();
+        chat.innerHTML += `<div class="message ai-msg">${data.output || "Photo processed."}</div>`;
+    } catch (err) {
+        console.error(err);
+        chat.innerHTML += `<div class="message ai-msg">Error sending photo.</div>`;
+    }
+    chat.scrollTop = chat.scrollHeight;
+}
+
+// ---------- TEXT MESSAGE ----------
+async function sendMessage(customMsg = null) {
+    const input = document.getElementById('user-input');
+    const lang = document.getElementById('lang-select').value;
+    const chat = document.getElementById('chat-window');
+    const val = customMsg || input.value.trim();
+    if(!val) return;
+
+    if(!customMsg) chat.innerHTML += `<div class="message user-msg">${val}</div>`;
+    input.value = '';
+    chat.scrollTop = chat.scrollHeight;
+
+    const tempId = 'ai-' + Date.now();
+    chat.innerHTML += `<div id="${tempId}" class="message ai-msg opacity-50">AI is analyzing (${lang})...</div>`;
+
+    try {
+        const res = await fetch(WEBHOOK_URL, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ 
+                message: val, 
+                location: userPos, 
+                language: lang,
+                sessionId: SESSION_ID
+            })
+        });
+        const rawData = await res.json();
+        
+        const data = Array.isArray(rawData) ? rawData[0] : rawData;
+        console.log('Processed data:', data);
+        
+        const aiBubble = document.getElementById(tempId);
+        aiBubble.innerHTML = `<div>${data.output}</div>`;
+        
+        if(data.patientBrief) {
+            aiBubble.innerHTML += `
+                <div class="brief-card">
+                    <span class="font-bold text-yellow-500 uppercase text-[10px]">Medical Summary for Reception:</span><br>
+                    "${data.patientBrief}"
+                </div>`;
+        }
+
+        aiBubble.classList.remove('opacity-50');
+        
+        if(data.lat && data.lng) {
+            runRoutingTo(data.lat, data.lng, data.placeName || "Hospital");
+        }
+    } catch(e) {
+        console.error('Error:', e);
+        document.getElementById(tempId).innerText = "Triage AI Connection Error.";
+    }
+    chat.scrollTop = chat.scrollHeight;
+}
+
+// ---------- ROUTING ----------
+function runRoutingTo(destLat, destLng, destName) {
+    if(!userPos) return;
+    if(routeControl) map.removeControl(routeControl);
+    routeControl = L.Routing.control({
+        waypoints: [L.latLng(userPos[0], userPos[1]), L.latLng(destLat, destLng)],
+        lineOptions: { styles: [{ color: '#6366f1', weight: 8 }] },
+        createMarker: (i, wp) => L.marker(wp.latLng).bindPopup(i === 0 ? "You" : destName)
+    }).addTo(map);
+}
+
+// ---------- GEOLOCATION ----------
+window.onload = () => {
+    navigator.geolocation.getCurrentPosition(p => {
+        userPos = [p.coords.latitude, p.coords.longitude];
+        map.setView(userPos, 15);
+        L.circleMarker(userPos, { color: '#6366f1', radius: 10 }).addTo(map);
+    }, null, { enableHighAccuracy: true });
+};
+</script>
+</body>
+</html>
