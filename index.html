@@ -131,7 +131,7 @@
 
                     <button id="micBtn" class="bg-red-500 hover:bg-red-400 px-4 rounded-xl text-white font-bold">🎤</button>
 
-                    <input type="text" id="user-input" class="flex-1 rounded-xl py-4 px-6 focus:outline-none focus:border-indigo-500 transition" placeholder="Describe symptoms..." onkeypress="if(event.key==='Enter') sendMessage()">
+                    <input type="text" id="user-input" class="flex-1 rounded-xl py-4 px-6 focus:outline-none focus:border-indigo-500 transition" placeholder="Type here" onkeypress="if(event.key==='Enter') sendMessage()">
                     
                     <button onclick="sendMessage()" class="bg-indigo-600 px-6 rounded-xl hover:bg-indigo-500 transition">
                         <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
@@ -418,5 +418,4 @@ window.onload = () => {
 };
 </script>
 </body>
-
 </html>
