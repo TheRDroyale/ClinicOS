@@ -8,182 +8,384 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
     
     <style>
-        :root { --primary: #6366f1; --bg: #020617; }
-        body { background-color: var(--bg); color: white; font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        :root {
+            --primary: #3b82f6;
+            --primary-soft: #eff6ff;
+            --accent: #10b981;
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --border: rgba(148, 163, 184, 0.25);
+        }
 
-        /* Animated Parallax Background */
-        .parallax-bg {
+        * { box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* ── Scrolling icon background ── */
+        .icon-bg {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .icon-lane {
+            position: absolute;
+            top: -200px;
+            display: flex;
+            flex-direction: column;
+            gap: 80px;
+            animation: scrollDown linear infinite;
+            will-change: transform;
+        }
+
+        @keyframes scrollDown {
+            from { transform: translateY(0); }
+            to   { transform: translateY(var(--travel)); }
+        }
+
+        .icon-lane svg {
+            width: 64px;
+            height: 64px;
+            opacity: 0.38;
+            flex-shrink: 0;
+            display: block;
+        }
+
+        /* ── Parallax glow ── */
+        .parallax-glow {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), rgba(99, 102, 241, 0.2) 0%, transparent 50%),
-                        radial-gradient(circle at 80% 20%, rgba(168, 85, 247, 0.15) 0%, transparent 40%);
-            z-index: -1;
-            transition: background 0.1s ease-out;
+            background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), rgba(59,130,246,0.07) 0%, transparent 55%);
+            z-index: 1;
+            pointer-events: none;
+            transition: background 0.15s ease-out;
         }
 
+        /* ── Glass card — light version ── */
         .glass-card {
-            background: rgba(30, 41, 59, 0.6);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 2rem;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 1.75rem;
+            box-shadow: 0 8px 32px -8px rgba(30, 41, 59, 0.1), 0 1px 3px rgba(30,41,59,0.06);
         }
 
+        /* ── Nav ── */
+        nav {
+            background: rgba(255,255,255,0.75);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(148,163,184,0.18);
+        }
+
+        /* ── Chat ── */
         #chat-window {
             height: 380px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 1rem;
-            padding-right: 10px;
+            gap: 0.9rem;
+            padding-right: 8px;
         }
 
-        .message { padding: 1rem 1.25rem; border-radius: 1.25rem; max-width: 80%; line-height: 1.5; }
-        .ai-msg { background: #1e293b; align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid #334155; color: white; }
-        .user-msg { background: var(--primary); align-self: flex-end; border-bottom-right-radius: 4px; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3); color: white; }
+        #chat-window::-webkit-scrollbar { width: 4px; }
+        #chat-window::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        #chat-window::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 
-        .brief-card { 
-            background: rgba(15, 23, 42, 0.8); 
-            border-left: 4px solid #f59e0b; 
-            padding: 1rem; 
-            margin-top: 0.5rem; 
-            font-size: 0.85rem; 
-            border-radius: 0.75rem;
-            color: #cbd5e1;
+        .message {
+            padding: 0.85rem 1.1rem;
+            border-radius: 1.1rem;
+            max-width: 82%;
+            line-height: 1.55;
+            font-size: 0.95rem;
+        }
+
+        .ai-msg {
+            background: #f0f9ff;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+            border: 1px solid #bae6fd;
+            color: #0f172a;
+        }
+
+        .user-msg {
+            background: var(--primary);
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+            color: white;
+            box-shadow: 0 3px 12px rgba(59,130,246,0.25);
+        }
+
+        .brief-card {
+            background: #fffbeb;
+            border-left: 3px solid #f59e0b;
+            padding: 0.85rem 1rem;
+            margin-top: 0.5rem;
+            font-size: 0.82rem;
+            border-radius: 0 0.6rem 0.6rem 0;
+            color: #78350f;
         }
 
         #user-input {
-            background-color: #ffffff !important;
-            color: #000000 !important;
+            background-color: #f8fafc !important;
+            color: #1e293b !important;
             font-weight: 500;
+            border: 1.5px solid #e2e8f0 !important;
+            transition: border-color 0.2s;
         }
-        #user-input::placeholder { color: #64748b; }
+        #user-input:focus { border-color: var(--primary) !important; outline: none; }
+        #user-input::placeholder { color: #94a3b8; }
 
-        #map { height: 500px; width: 100%; border-radius: 1.5rem; }
+        #map { height: 500px; width: 100%; border-radius: 1.4rem; }
         .leaflet-routing-container { display: none; }
 
-        #about-page { transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); transform: translateY(100%); }
+        /* ── About page ── */
+        #about-page {
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translateY(100%);
+            background: #f8fafc;
+        }
         #about-page.active { transform: translateY(0); }
 
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 3000; align-items: center; justify-content: center; backdrop-filter: blur(10px); }
+        /* ── Modal ── */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15,23,42,0.45);
+            z-index: 3000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(8px);
+        }
 
-        /* camera preview container */
+        /* ── Buttons ── */
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            font-weight: 700;
+            border-radius: 0.85rem;
+            transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+            box-shadow: 0 4px 14px rgba(59,130,246,0.3);
+        }
+        .btn-primary:hover { background: #2563eb; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(59,130,246,0.38); }
+
+        .btn-icon {
+            background: #f1f5f9;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 0.85rem;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .btn-icon:hover { background: #e0f2fe; border-color: #7dd3fc; }
+
+        /* ── Camera ── */
         #camera-container { transition: all 0.2s ease; }
         #shutterBtn {
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(4px);
-            border: 2px solid white;
-            box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+            background: white;
+            border: 2px solid var(--primary);
+            box-shadow: 0 0 0 4px rgba(59,130,246,0.15);
+            transition: transform 0.15s, box-shadow 0.15s;
         }
-        #shutterBtn:hover { background: rgba(255, 255, 255, 0.3); transform: scale(1.05); }
-        #cameraPreview { border: 2px solid rgba(255,255,255,0.2); box-shadow: 0 10px 30px -10px #000; }
+        #shutterBtn:hover { transform: scale(1.08); box-shadow: 0 0 0 6px rgba(59,130,246,0.2); }
+        #cameraPreview { border: 2px solid #bfdbfe; box-shadow: 0 8px 24px -8px rgba(30,41,59,0.18); border-radius: 0.85rem; }
+
+        /* ── Pulse dot ── */
+        @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(1.3)} }
+        .live-dot { width:10px;height:10px;background:#10b981;border-radius:50%;animation:pulse 2s ease-in-out infinite; }
+
+        /* ── Logo ── */
+        .logo-text { font-family: 'DM Serif Display', serif; font-size: 2rem; color: #1e293b; letter-spacing: -0.02em; }
+        .logo-accent { color: var(--primary); }
+
+        /* z-index layers */
+        .z-content { position: relative; z-index: 10; }
+
+        /* Bouncing arrow */
+        @keyframes bounceDown {
+            0%, 100% { transform: translateY(0); }
+            50%       { transform: translateY(7px); }
+        }
+        .bounce-arrow { animation: bounceDown 1.4s ease-in-out infinite; display: block; }
     </style>
 </head>
 <body>
 
-    <div class="parallax-bg" id="bg"></div>
+    <!-- ── Scrolling hospitality icon background ── -->
+    <div class="icon-bg" id="icon-bg"></div>
 
-    <nav class="container mx-auto flex justify-between items-center py-8 px-6 relative z-10">
-        <h1 class="text-4xl font-black text-white tracking-tighter cursor-pointer" onclick="location.reload()">
-            Clinic<span class="text-indigo-500">OS</span>
-        </h1>
-        <div class="flex items-center space-x-6">
-            <select id="lang-select" class="bg-slate-800 text-xs font-bold border border-slate-700 rounded-lg p-2 outline-none text-indigo-400">
-                <option value="English">EN</option>
-                <option value="Arabic">AR</option>
-                <option value="Spanish">ES</option>
-                <option value="French">FR</option>
-            </select>
-            <button class="text-slate-400 hover:text-white font-bold transition" onclick="toggleAbout(true)">About Us</button>
-            <div id="auth-zone">
-                <button class="bg-indigo-600 hover:bg-indigo-500 px-8 py-3 rounded-xl font-bold transition transform hover:-translate-y-1 shadow-xl" onclick="toggleModal('auth-modal', true)">Sign In</button>
+    <!-- ── Parallax glow ── -->
+    <div class="parallax-glow" id="bg"></div>
+
+    <!-- ── Nav ── -->
+    <nav class="sticky top-0 z-50 px-6 py-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="logo-text cursor-pointer" onclick="location.reload()">
+                Clinic<span class="logo-accent">OS</span>
+            </h1>
+            <div class="flex items-center space-x-4">
+                <select id="lang-select" class="bg-white text-xs font-bold border border-slate-200 rounded-lg px-3 py-2 outline-none text-blue-600 shadow-sm">
+                    <option value="English">EN</option>
+                    <option value="Arabic">AR</option>
+                    <option value="Spanish">ES</option>
+                    <option value="French">FR</option>
+                </select>
             </div>
-            <button id="telegramBtn" class="bg-blue-500 hover:bg-blue-400 px-4 py-2 rounded-xl text-white font-bold">Telegram Booking</button>
         </div>
     </nav>
 
-    <main class="container mx-auto px-6 grid lg:grid-cols-2 gap-10 pb-20 relative z-10">
-        
-        <!-- LEFT PANEL: CHAT + INPUT + CAMERA -->
-        <div class="glass-card p-8 flex flex-col h-full">
-            <div class="flex items-center justify-between mb-6">
-                <div class="flex items-center space-x-3">
-                    <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                    <h2 class="text-xl font-bold">Multi-Modal AI</h2>
+    <!-- ── Main grid ── -->
+    <main class="container mx-auto px-6 grid lg:grid-cols-2 gap-8 pb-20 pt-8 z-content lg:items-start">
+
+        <!-- LEFT: Start Here + CHAT -->
+        <div class="flex flex-col gap-3">
+            <!-- Start Here heading + bouncing arrow -->
+            <div class="text-center mb-1">
+                <h3 class="text-slate-900 font-black mb-2" style="font-family:'DM Serif Display',serif; font-size:2rem; line-height:1.1;">Start Here</h3>
+                <p class="text-slate-500 text-sm leading-relaxed mx-auto" style="max-width:22rem;">
+                    Explain your symptoms to the AI Assistant — it will guide you to the right triage and make sure you're covered every step of the way.
+                </p>
+                <!-- Bouncing arrow -->
+                <div class="mt-3 flex justify-center">
+                    <svg class="bounce-arrow" width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <polyline points="4,6 14,22 24,6" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                    </svg>
                 </div>
             </div>
 
-            <div id="chat-window">
-                <div class="message ai-msg">Welcome to ClinicOS!</div>
-            </div>
-
-            <div class="mt-6 flex flex-col space-y-3">
-                <!-- Input row: camera trigger, mic, text, send -->
-                <div class="flex space-x-3">
-                    <!-- Camera icon button (always visible, hidden when preview active) -->
-                    <button id="cameraBtn" class="bg-slate-800 p-4 rounded-xl hover:bg-slate-700 transition border border-slate-700 flex items-center justify-center">
-                        <svg class="w-6 h-6 text-indigo-400" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 5c-3.86 0-7 3.14-7 7s3.14 7 7 7 7-3.14 7-7-3.14-7-7-7zm0 12c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-9a4 4 0 100 8 4 4 0 000-8zm6.5-2a1.5 1.5 0 110 3 1.5 1.5 0 010-3z"/>
-                        </svg>
-                    </button>
-
-                    <button id="micBtn" class="bg-red-500 hover:bg-red-400 px-4 rounded-xl text-white font-bold">🎤</button>
-
-                    <input type="text" id="user-input" class="flex-1 rounded-xl py-4 px-6 focus:outline-none focus:border-indigo-500 transition" placeholder="Type here" onkeypress="if(event.key==='Enter') sendMessage()">
-                    
-                    <button onclick="sendMessage()" class="bg-indigo-600 px-6 rounded-xl hover:bg-indigo-500 transition">
-                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                    </button>
+            <div class="glass-card p-7 flex flex-col h-full">
+                <div class="flex items-center space-x-3 mb-5">
+                    <div class="live-dot"></div>
+                    <h2 class="text-lg font-bold text-slate-800">Multi-Modal AI Triage</h2>
                 </div>
 
-                <!-- Camera preview container (hidden by default) -->
-                <div id="camera-container" class="hidden mt-4 flex items-center space-x-4">
-                    <video id="cameraPreview" class="rounded-xl w-48 h-auto" autoplay playsinline></video>
-                    <button id="shutterBtn" class="rounded-full w-14 h-14 flex items-center justify-center transition" title="Take photo">
-                        <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                            <circle cx="12" cy="12" r="10" stroke="white" stroke-width="2" fill="white" />
-                        </svg>
-                    </button>
+                <div id="chat-window">
+                    <div class="message ai-msg">Welcome to ClinicOS! How can I assist you today?</div>
+                </div>
+
+                <div class="mt-5 flex flex-col space-y-3">
+                    <div class="flex space-x-2">
+                        <button id="cameraBtn" class="btn-icon p-3.5 flex items-center justify-center" title="Take a photo">
+                            <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                                <circle cx="12" cy="13" r="4"/>
+                            </svg>
+                        </button>
+                        <button id="micBtn" class="btn-icon p-3.5 flex items-center justify-center" title="Record voice" style="border-color:#fecaca;">
+                            <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                <rect x="9" y="2" width="6" height="11" rx="3"/>
+                                <path d="M5 10a7 7 0 0 0 14 0"/>
+                                <line x1="12" y1="19" x2="12" y2="22"/>
+                                <line x1="9" y1="22" x2="15" y2="22"/>
+                            </svg>
+                        </button>
+                        <input type="text" id="user-input" class="flex-1 rounded-xl py-3.5 px-5 text-sm" placeholder="Describe your symptoms…" onkeypress="if(event.key==='Enter') sendMessage()">
+                        <button onclick="sendMessage()" class="btn-primary px-5 rounded-xl">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div id="camera-container" class="hidden mt-2 flex items-center space-x-4">
+                        <video id="cameraPreview" class="w-44 h-auto" autoplay playsinline></video>
+                        <button id="shutterBtn" class="rounded-full w-12 h-12 flex items-center justify-center" title="Capture photo">
+                            <svg class="w-6 h-6" fill="none" stroke="#3b82f6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="9" fill="#eff6ff"/>
+                                <circle cx="12" cy="12" r="5" fill="#3b82f6"/>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- RIGHT PANEL: MAP -->
-        <div class="glass-card p-2 overflow-hidden">
-            <div id="map"></div>
+        <!-- RIGHT: buttons + badges + MAP -->
+        <div class="flex flex-col gap-4">
+
+            <!-- Action buttons + stat badges -->
+            <div class="flex flex-col gap-3 items-end">
+                <div class="flex flex-wrap gap-3 justify-end">
+                    <button class="text-slate-500 hover:text-slate-800 font-semibold transition text-sm px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50" onclick="toggleAbout(true)">About Us</button>
+                    <div id="auth-zone">
+                        <button class="btn-primary px-6 py-2.5 text-sm" onclick="toggleModal('auth-modal', true)">Sign In</button>
+                    </div>
+                    <button id="telegramBtn" class="text-white px-4 py-2.5 rounded-xl font-bold text-sm transition shadow-sm" style="background:#29a9eb;" onmouseover="this.style.background='#1d96d8'" onmouseout="this.style.background='#29a9eb'">Telegram</button>
+                </div>
+                <div class="flex flex-wrap gap-3 justify-end">
+                    <div class="glass-card px-5 py-3 flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:#eff6ff;">
+                            <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                        </div>
+                        <div><div class="text-base font-black text-slate-800" style="font-family:'DM Serif Display',serif;">Beta</div><div class="text-xs text-slate-400 font-medium">In testing</div></div>
+                    </div>
+                    <div class="glass-card px-5 py-3 flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:#ecfdf5;">
+                            <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        </div>
+                        <div><div class="text-base font-black text-slate-800" style="font-family:'DM Serif Display',serif;">~5s</div><div class="text-xs text-slate-400 font-medium">AI response</div></div>
+                    </div>
+                    <div class="glass-card px-5 py-3 flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:#eff6ff;">
+                            <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        </div>
+                        <div><div class="text-base font-black text-slate-800" style="font-family:'DM Serif Display',serif;">Pilot</div><div class="text-xs text-slate-400 font-medium">Early access</div></div>
+                    </div>
+                    <div class="glass-card px-5 py-3 flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:#ecfdf5;">
+                            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 2l7 4v5c0 5-3.5 9.74-7 11-3.5-1.26-7-6-7-11V6l7-4z"/><polyline points="9 12 11 14 15 10"/></svg>
+                        </div>
+                        <div><div class="text-base font-black text-slate-800" style="font-family:'DM Serif Display',serif;">4 langs</div><div class="text-xs text-slate-400 font-medium">Supported</div></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MAP -->
+            <div class="glass-card p-2 overflow-hidden">
+                <div id="map"></div>
+            </div>
         </div>
     </main>
 
-    <!-- ABOUT PAGE -->
-    <div id="about-page" class="fixed inset-0 bg-slate-950 z-50 overflow-y-auto">
-        <div class="absolute inset-0 bg-slate-950 opacity-40"></div>
+    <!-- ── About page ── -->
+    <div id="about-page" class="fixed inset-0 z-50 overflow-y-auto">
         <div class="container mx-auto px-6 py-20 max-w-4xl relative z-10">
-            <button class="text-indigo-400 font-bold mb-10 text-xl hover:text-indigo-300 transition" onclick="toggleAbout(false)">← Back to app</button>
-            <div class="glass-card p-10 md:p-16 border border-slate-700/50 shadow-2xl">
-                <h1 class="text-6xl font-black mb-12 tracking-tighter text-white">The <span class="text-indigo-500">Vision.</span></h1>
-                <p class="text-xl text-slate-200 leading-relaxed mb-10">ClinicOS uses real-time AI and GPS data to bridge the gap between injury and treatment.</p>
-                <div class="grid md:grid-cols-2 gap-8">
-                    <div class="p-6 border-l-4 border-indigo-500 bg-slate-900/50 rounded-r-xl">
-                        <h3 class="text-2xl font-bold text-white">Walid K W</h3>
-                        <p class="text-indigo-400 font-bold text-sm uppercase tracking-widest mt-1">Architecture</p>
+            <button class="text-blue-500 font-bold mb-10 text-lg hover:text-blue-600 transition" onclick="toggleAbout(false)">← Back to app</button>
+            <div class="glass-card p-10 md:p-16 shadow-xl">
+                <h1 class="text-5xl font-black mb-10 tracking-tight text-slate-900" style="font-family:'DM Serif Display',serif">The <span class="text-blue-500">Vision.</span></h1>
+                <p class="text-lg text-slate-600 leading-relaxed mb-10">ClinicOS uses real-time AI and GPS data to bridge the gap between injury and treatment.</p>
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div class="p-6 border-l-4 border-blue-400 bg-blue-50 rounded-r-xl">
+                        <h3 class="text-xl font-bold text-slate-800">Walid K W</h3>
+                        <p class="text-blue-500 font-bold text-xs uppercase tracking-widest mt-1">Architecture</p>
                     </div>
-                    <div class="p-6 border-l-4 border-blue-500 bg-slate-900/50 rounded-r-xl">
-                        <h3 class="text-2xl font-bold text-white">Yousif Sadiq</h3>
-                        <p class="text-blue-400 font-bold text-sm uppercase tracking-widest mt-1">AI Systems</p>
+                    <div class="p-6 border-l-4 border-emerald-400 bg-emerald-50 rounded-r-xl">
+                        <h3 class="text-xl font-bold text-slate-800">Yousif Sadiq</h3>
+                        <p class="text-emerald-500 font-bold text-xs uppercase tracking-widest mt-1">AI Systems</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- AUTH MODAL -->
+    <!-- ── Auth Modal ── -->
     <div id="auth-modal" class="modal" onclick="if(event.target==this) toggleModal('auth-modal', false)">
-        <div class="modal-content glass-card p-10 w-full max-w-md">
-            <h2 id="auth-title" class="text-3xl font-bold mb-2 text-white">Sign In</h2>
-            <input type="text" id="username" placeholder="Username" class="w-full bg-white border border-slate-700 rounded-xl p-4 mb-6 outline-none text-black font-bold">
-            <button class="w-full bg-indigo-600 py-4 rounded-xl font-bold text-lg text-white" onclick="handleAuth()">Continue</button>
+        <div class="glass-card p-10 w-full max-w-md">
+            <h2 class="text-2xl font-bold mb-6 text-slate-800">Sign In</h2>
+            <input type="text" id="username" placeholder="Username" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 mb-5 outline-none text-slate-800 font-bold focus:border-blue-400 transition">
+            <button class="w-full btn-primary py-4 rounded-xl text-base" onclick="handleAuth()">Continue</button>
         </div>
     </div>
 
@@ -191,6 +393,55 @@
     <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 
 <script>
+// ---------- STORED LOCATION DATA ----------
+const CLINIC_LOCATIONS = {
+    "city_hospital": { name: "City General Hospital", lat: 25.3463, lng: 55.4209, urgency: "High" },
+    "care_clinic": { name: "Care Plus Clinic", lat: 25.3500, lng: 55.4100, urgency: "Low" },
+    "urgent_care": { name: "Sharjah Urgent Care", lat: 25.3350, lng: 55.3900, urgency: "Medium" }
+};
+let destinationMarker = null;
+
+// ---------- SCROLLING ICONS ----------
+(function buildIconBg() {
+    const container = document.getElementById('icon-bg');
+    const icons = [
+        `<svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>`,
+        `<svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>`,
+        `<svg viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6.5a4 4 0 0 0 4 4h.5a4 4 0 0 1 4 4v1a3 3 0 0 0 6 0v-3"/><circle cx="19" cy="8" r="2"/><circle cx="4.5" cy="6.5" r="1.5"/><circle cx="8.5" cy="6.5" r="1.5"/></svg>`,
+        `<svg viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="9" width="14" height="10" rx="1"/><path d="M15 12h4l3 4v3h-7V12z"/><circle cx="5.5" cy="19" r="1.5"/><circle cx="18.5" cy="19" r="1.5"/><line x1="6" y1="13" x2="10" y2="13"/><line x1="8" y1="11" x2="8" y2="15"/></svg>`,
+        `<svg viewBox="0 0 24 24" fill="none" stroke="#93c5fd" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="10" width="18" height="5" rx="2.5" transform="rotate(-45 12 12)"/><line x1="8.5" y1="15.5" x2="15.5" y2="8.5"/></svg>`,
+        `<svg viewBox="0 0 24 24" fill="none" stroke="#6ee7b7" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6a1 1 0 0 1 1 1v1H8V3a1 1 0 0 1 1-1z"/><rect x="4" y="4" width="16" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="12" y2="17"/></svg>`,
+        `<svg viewBox="0 0 24 24" fill="none" stroke="#a5b4fc" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l7 4v5c0 5-3.5 9.74-7 11-3.5-1.26-7-6-7-11V6l7-4z"/><line x1="12" y1="8" x2="12" y2="14"/><line x1="9" y1="11" x2="15" y2="11"/></svg>`,
+        `<svg viewBox="0 0 24 24" fill="none" stroke="#7dd3fc" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>`,
+        `<svg viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="1"/><line x1="3" y1="9" x2="21" y2="9"/><path d="M9 22v-6h6v6"/><line x1="12" y1="5" x2="12" y2="8"/><line x1="10.5" y1="6.5" x2="13.5" y2="6.5"/></svg>`,
+        `<svg viewBox="0 0 24 24" fill="none" stroke="#bfdbfe" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8l-.27-.27a2 2 0 0 0-2.83 2.83l2.1 2.1A6 6 0 0 0 6 23h8a6 6 0 0 0 6-6v-5a2 2 0 0 0-2-2h0"/></svg>`
+    ];
+
+    const LANE_COUNT = 9;
+    for (let i = 0; i < LANE_COUNT; i++) {
+        const lane = document.createElement('div');
+        lane.className = 'icon-lane';
+        const leftPct = (i / (LANE_COUNT - 1)) * 100;
+        lane.style.left = `calc(${leftPct}% - 20px)`;
+        const dur = 28 + Math.random() * 32;
+        const ICON_HEIGHT = 64;
+        const GAP = 80;
+        const STEP = ICON_HEIGHT + GAP;
+        const repeatCount = Math.ceil((window.innerHeight + 200) / STEP) + 4;
+        const travel = repeatCount * STEP;
+        lane.style.setProperty('--travel', travel + 'px');
+        lane.style.animationDuration = dur + 's';
+        lane.style.animationDelay = `-${Math.random() * dur}s`;
+        const shuffled = [...icons].sort(() => Math.random() - 0.5);
+        for (let j = 0; j < repeatCount + 2; j++) {
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = shuffled[j % shuffled.length];
+            lane.appendChild(wrapper.firstElementChild);
+        }
+        container.appendChild(lane);
+    }
+})();
+
 // ---------- CONFIG ----------
 const WEBHOOK_URL = 'https://castle-older-ribbon-exhibition.trycloudflare.com/webhook/webhookclinic';
 let userPos = null, map, routeControl;
@@ -210,9 +461,7 @@ document.getElementById("micBtn").onclick = async function () {
         mediaRecorder = new MediaRecorder(stream);
         audioChunks = [];
 
-        mediaRecorder.ondataavailable = e => {
-            audioChunks.push(e.data);
-        };
+        mediaRecorder.ondataavailable = e => { audioChunks.push(e.data); };
 
         mediaRecorder.onstop = async () => {
             const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
@@ -220,10 +469,10 @@ document.getElementById("micBtn").onclick = async function () {
         };
 
         mediaRecorder.start();
-        this.innerText = "⏹️"; // stop icon
+        this.innerHTML = `<svg class="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>`;
     } else {
         mediaRecorder.stop();
-        this.innerText = "🎤";
+        this.innerHTML = `<svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="9" y1="22" x2="15" y2="22"/></svg>`;
     }
 };
 
@@ -235,11 +484,7 @@ async function sendVoiceToBot(audioBlob) {
     const chat = document.getElementById("chat-window");
     chat.innerHTML += `<div class="message user-msg italic">🎤 Voice message sent</div>`;
 
-    const res = await fetch(WEBHOOK_URL, {
-        method: "POST",
-        body: formData
-    });
-
+    const res = await fetch(WEBHOOK_URL, { method: "POST", body: formData });
     const data = await res.json();
     chat.innerHTML += `<div class="message ai-msg">${data.output}</div>`;
 }
@@ -257,7 +502,9 @@ const SESSION_ID = getSessionId();
 
 // ---------- MAP INIT ----------
 map = L.map('map', { zoomControl: false }).setView([25.3463, 55.4209], 14);
-L.tileLayer('http://{s}.google.com/vt/lyrs=m,h&x={x}&y={y}&z={z}', { subdomains: ['mt0','mt1','mt2','mt3'] }).addTo(map);
+L.tileLayer('http://{s}.google.com/vt/lyrs=m,h&x={x}&y={y}&z={z}', {
+    subdomains: ['mt0','mt1','mt2','mt3']
+}).addTo(map);
 
 // ---------- PARALLAX ----------
 window.addEventListener('mousemove', (e) => {
@@ -273,21 +520,20 @@ function toggleModal(id, show) { document.getElementById(id).style.display = sho
 
 function handleAuth() {
     const user = document.getElementById('username').value;
-    if(!user) return;
-    document.getElementById('auth-zone').innerHTML = `<div class="bg-slate-800 px-5 py-2 rounded-xl border border-slate-700 text-indigo-400 font-bold">@${user}</div>`;
+    if (!user) return;
+    document.getElementById('auth-zone').innerHTML = `<div class="bg-blue-50 px-5 py-2 rounded-xl border border-blue-200 text-blue-600 font-bold text-sm">@${user}</div>`;
     toggleModal('auth-modal', false);
 }
 
-// ---------- CAMERA LIVE PREVIEW & SHUTTER ----------
+// ---------- CAMERA ----------
 const cameraBtn = document.getElementById('cameraBtn');
 const cameraContainer = document.getElementById('camera-container');
 const video = document.getElementById('cameraPreview');
 const shutterBtn = document.getElementById('shutterBtn');
-let stream = null;  // will hold MediaStream
+let stream = null;
 
-// Open camera, show preview and shutter, hide camera button
 cameraBtn.onclick = async () => {
-    if (stream) return; // already open
+    if (stream) return;
     try {
         stream = await navigator.mediaDevices.getUserMedia({ video: true });
         video.srcObject = stream;
@@ -300,22 +546,13 @@ cameraBtn.onclick = async () => {
     }
 };
 
-// Shutter button: capture photo, send, then close preview
 shutterBtn.onclick = () => {
     if (!stream) return;
-
-    // Capture frame from video
     const canvas = document.createElement('canvas');
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0);
-
-    canvas.toBlob(blob => {
-        sendCameraPhoto(blob);
-    }, 'image/jpeg', 0.8);
-
-    // Stop all tracks and hide preview
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    canvas.toBlob(blob => { sendCameraPhoto(blob); }, 'image/jpeg', 0.8);
     stream.getTracks().forEach(track => track.stop());
     stream = null;
     video.srcObject = null;
@@ -323,15 +560,12 @@ shutterBtn.onclick = () => {
     cameraBtn.classList.remove('hidden');
 };
 
-// Function to send photo blob to webhook
 async function sendCameraPhoto(blob) {
     const chat = document.getElementById('chat-window');
     chat.innerHTML += `<div class="message user-msg italic text-xs">📷 Photo taken from camera</div>`;
-
     const formData = new FormData();
     formData.append("image", blob);
     formData.append("sessionId", SESSION_ID);
-
     try {
         const res = await fetch(WEBHOOK_URL, { method: "POST", body: formData });
         const data = await res.json();
@@ -343,79 +577,115 @@ async function sendCameraPhoto(blob) {
     chat.scrollTop = chat.scrollHeight;
 }
 
+// ---------- DESTINATION UI & MAPPING ----------
+function showDestinationOnMap(clinic) {
+    if (destinationMarker) {
+        map.removeLayer(destinationMarker);
+    }
+    
+    destinationMarker = L.marker([clinic.lat, clinic.lng]).addTo(map)
+        .bindPopup(`<b class="font-bold text-slate-800">${clinic.name}</b>`)
+        .openPopup();
+        
+    map.setView([clinic.lat, clinic.lng], 14);
+
+    appendLocationCard(clinic);
+}
+
+function appendLocationCard(clinic) {
+    const chat = document.getElementById('chat-window');
+    const mapsLink = `https://www.google.com/maps/dir/?api=1&destination=${clinic.lat},${clinic.lng}`;
+    const coordsText = `${clinic.lat}, ${clinic.lng}`;
+    
+    const cardHTML = `
+        <div class="message ai-msg mt-2" style="border: 2px solid #10b981; background: #ecfdf5;">
+            <div class="font-bold text-slate-800 mb-1 flex items-center gap-2">
+                <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                Destination Set: ${clinic.name}
+            </div>
+            <div class="text-sm text-slate-600 mb-3">The map has been updated. Please proceed safely.</div>
+            <div class="flex gap-2">
+                <a href="${mapsLink}" target="_blank" class="btn-primary px-3 py-2 text-xs rounded-lg text-center flex-1 transition hover:opacity-90" style="background:#10b981; box-shadow:none;">
+                    Open in Google Maps
+                </a>
+                <button onclick="copyToClipboard('${coordsText}')" class="px-3 py-2 text-xs font-bold rounded-lg border border-slate-300 text-slate-600 bg-white hover:bg-slate-50 transition">
+                    Copy Location
+                </button>
+            </div>
+        </div>
+    `;
+    chat.innerHTML += cardHTML;
+    chat.scrollTop = chat.scrollHeight;
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        alert('Coordinates copied to clipboard: ' + text);
+    }).catch(err => {
+        console.error('Could not copy text: ', err);
+    });
+}
+
 // ---------- TEXT MESSAGE ----------
 async function sendMessage(customMsg = null) {
     const input = document.getElementById('user-input');
     const lang = document.getElementById('lang-select').value;
     const chat = document.getElementById('chat-window');
     const val = customMsg || input.value.trim();
-    if(!val) return;
+    if (!val) return;
 
-    if(!customMsg) chat.innerHTML += `<div class="message user-msg">${val}</div>`;
+    if (!customMsg) chat.innerHTML += `<div class="message user-msg">${val}</div>`;
     input.value = '';
     chat.scrollTop = chat.scrollHeight;
 
     const tempId = 'ai-' + Date.now();
-    chat.innerHTML += `<div id="${tempId}" class="message ai-msg opacity-50">AI is analyzing (${lang})...</div>`;
+    chat.innerHTML += `<div id="${tempId}" class="message ai-msg opacity-50">Analyzing… (${lang})</div>`;
 
     try {
         const res = await fetch(WEBHOOK_URL, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ 
-                message: val, 
-                location: userPos, 
-                language: lang,
-                sessionId: SESSION_ID
-            })
+            body: JSON.stringify({ message: val, location: userPos, language: lang, sessionId: SESSION_ID })
         });
         const rawData = await res.json();
-        
         const data = Array.isArray(rawData) ? rawData[0] : rawData;
         console.log('Processed data:', data);
-        
+
         const aiBubble = document.getElementById(tempId);
-        aiBubble.innerHTML = `<div>${data.output}</div>`;
-        
-        if(data.patientBrief) {
+        aiBubble.innerHTML = `<div>${data.output || data.message || "I've processed your request."}</div>`;
+
+        if (data.patientBrief) {
             aiBubble.innerHTML += `
                 <div class="brief-card">
-                    <span class="font-bold text-yellow-500 uppercase text-[10px]">Medical Summary for Reception:</span><br>
+                    <span class="font-bold text-yellow-700 uppercase text-[10px]">Medical Summary for Reception:</span><br>
                     "${data.patientBrief}"
                 </div>`;
         }
 
         aiBubble.classList.remove('opacity-50');
-        
-        if(data.lat && data.lng) {
-            runRoutingTo(data.lat, data.lng, data.placeName || "Hospital");
+
+        // MAP UPDATE LOGIC
+        if (data.destination_key && CLINIC_LOCATIONS[data.destination_key]) {
+            showDestinationOnMap(CLINIC_LOCATIONS[data.destination_key]);
+        } else if (data.lat && data.lng) {
+            showDestinationOnMap({
+                name: data.placeName || data.clinic_name || "Suggested Destination",
+                lat: data.lat,
+                lng: data.lng
+            });
         }
+        
     } catch(e) {
         console.error('Error:', e);
-        document.getElementById(tempId).innerText = "Triage AI Connection Error.";
+        const errorBubble = document.getElementById(tempId);
+        if (errorBubble) {
+            errorBubble.innerHTML = "Sorry, I am having trouble connecting to the network right now.";
+            errorBubble.classList.remove('opacity-50');
+        }
     }
+    
     chat.scrollTop = chat.scrollHeight;
 }
-
-// ---------- ROUTING ----------
-function runRoutingTo(destLat, destLng, destName) {
-    if(!userPos) return;
-    if(routeControl) map.removeControl(routeControl);
-    routeControl = L.Routing.control({
-        waypoints: [L.latLng(userPos[0], userPos[1]), L.latLng(destLat, destLng)],
-        lineOptions: { styles: [{ color: '#6366f1', weight: 8 }] },
-        createMarker: (i, wp) => L.marker(wp.latLng).bindPopup(i === 0 ? "You" : destName)
-    }).addTo(map);
-}
-
-// ---------- GEOLOCATION ----------
-window.onload = () => {
-    navigator.geolocation.getCurrentPosition(p => {
-        userPos = [p.coords.latitude, p.coords.longitude];
-        map.setView(userPos, 15);
-        L.circleMarker(userPos, { color: '#6366f1', radius: 10 }).addTo(map);
-    }, null, { enableHighAccuracy: true });
-};
 </script>
 </body>
 </html>
